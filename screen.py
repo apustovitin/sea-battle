@@ -63,7 +63,6 @@ class Screen:
                 # Coordinate y counts from top of screen and coordinate x counts from left of screen
                 return [y, x]
 
-
     def set_end_of_layout_y(self):
         layout_center_y = len(self.screen_layout) // 2
         return self.center_y + layout_center_y
@@ -78,6 +77,13 @@ class Screen:
     def print_winner(self, winner):
         message = winner + " IS WIN!"
         self.stdscr.addstr(self.end_of_layout_y + 1, self.center_x - len(message) // 2, message)
+        
+    def print_diagnostic_message(self, message):
+        self.stdscr.move(self.end_of_layout_y + 2, 0)
+        self.stdscr.clrtoeol()
+        self.stdscr.refresh()
+        self.stdscr.addstr(self.end_of_layout_y + 2, self.center_x - len(message) // 2, message)
+        self.stdscr.refresh()
 
 
 if __name__ == '__main__':
@@ -100,7 +106,7 @@ if __name__ == '__main__':
             y_pos = max(0, y_pos - 1)
         elif ch_input == curses.KEY_DOWN:
             stdscr.addch(screen.player_board_start_y + y_pos * screen.step_y, 
-                         screen.player_board_start_x + x_pos * screen.step_x, " ")                
+                         screen.player_board_start_x + x_pos * screen.step_x, " ")
             y_pos = min(9, y_pos + 1)
         elif ch_input == curses.KEY_LEFT:
             stdscr.addch(screen.player_board_start_y + y_pos * screen.step_y, 
@@ -110,8 +116,10 @@ if __name__ == '__main__':
             stdscr.addch(screen.player_board_start_y + y_pos * screen.step_y, 
                          screen.player_board_start_x + x_pos * screen.step_x, " ")
             x_pos = min(9, x_pos + 1)
-        elif ch_input == ord('q') or ch_input == ord('Q'): break
-        elif ch_input == ord('r') or ch_input == ord('R'): break        
+        elif ch_input == ord('q') or ch_input == ord('Q'):
+            break
+        elif ch_input == ord('r') or ch_input == ord('R'):
+            break        
     # for i in range(10):
     #     stdscr.addch(start_y + i * step_y, start_x + i * step_x, deck)
     #     stdscr.refresh()
@@ -128,11 +136,3 @@ if __name__ == '__main__':
     stdscr.move(screen.end_of_layout_y, screen.center_x)
     curses.curs_set(1)
     stdscr.getkey()
-
-
-
-# deck = '■'
-# #flooded_deck = '□'
-# #deck = '\u25a0'
-# flooded_deck = '\u25A1'
-# print(deck)

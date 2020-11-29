@@ -1,16 +1,20 @@
 import importlib
 import curses
 import board_image
-from ship import Ship
+from ship import Ship, UnknownShip
 from screen import Screen
 import time
 import random
 
 
 class Game(Screen):
-    def __init__(self, stdscr, file_name):
+    def __init__(self, stdscr, file_name, unknown_ships, player_board, player_board_image):
         super().__init__(stdscr, file_name)
-        self.flooded_deck, self.aim_char, self.miss_char, self.deck_char = '□', '+', '*', '■'
+        self.flooded_deck_char, self.aim_char, self.miss_char, self.deck_char = '□', '+', '*', '■'
+        self.unknown_ships = unknown_ships
+        self.player_board = player_board
+        self.player_board_image = player_board_image
+        self.unknown_ship = UnknownShip(unknown_ships, player_board_image)
         # self.is_break, self.is_restart  = self.place_player_ship(decks_number, self.deck_char)
 
     def print_ship_background(self, ship_background):
@@ -137,7 +141,7 @@ class Game(Screen):
             elif ch_input == ord(' '):
                 if not computer_board.board[x_pos][y_pos]:
                     computer_board.board[x_pos][y_pos] = not computer_board.board[x_pos][y_pos]
-                    self.print_char_at_computer_board(y_pos, x_pos, self.flooded_deck)
+                    self.print_char_at_computer_board(y_pos, x_pos, self.flooded_deck_char)
                     if computer_board.check_win():
                         return self.win_action(False)
                     continue
@@ -162,51 +166,44 @@ class Game(Screen):
             self.stdscr.addch(y, x, char)
             self.stdscr.refresh()
 
-    def get_possible_deck_location(self, player_board_image, available_enemy_ships):
-        possible_decks = [[y, x] for x in range(10) for y in range(10) if player_board_image.board[x][y] == 'possible']
-        if not possible_decks:
+    def choise_computer_shoot_coordinate(self):
+        if self.unknown_ship.possible_ship_area:
+            possible_decks = self.unknown_ship.possible_ship_area
+        else:
             possible_decks = []
-            available_enemy_ships_set = set(available_enemy_ships)
-            empty_cells = player_board_image.get_empty_cells()
-            for decks_number in available_enemy_ships_set:
+            unknown_ships_set = set(self.unknown_ships)
+            empty_cells = self.player_board_image.get_empty_cells()
+            for decks_number in unknown_ships_set:
                 for is_gorizontal in (True, False):
                     for [y, x] in empty_cells:
                         ship = Ship(decks_number, y, x, is_gorizontal)
-                        if player_board_image.are_free_board_cells(ship):
+                        if self.player_board_image.are_free_board_cells(ship):
                             if [y, x] not in possible_decks:
                                 possible_decks.append([y, x])
-        return possible_decks
+        return random.choice(possible_decks)
 
-    def choise_computer_shoot_coordinate(self, player_board_image, available_enemy_ships):
-        possible_cells = self.get_possible_deck_location(player_board_image, available_enemy_ships)
-        last_possible_cell = None
-        if len(possible_cells) == 1: last_possible_cell = possible_cells[0]
-        return [random.choice(possible_cells), last_possible_cell]
+    def check_unknown_ship(self):
+        if not self.unknown_ship.is_unknown:
+            self.unknown_ships = self.unknown_ship.unknown_ships
+            self.player_board_image = self.unknown_ship.image_board
+            self.unknown_ship = UnknownShip(self.unknown_ships, self.player_board_image)
 
-    def take_computer_turn(self, player_board, player_board_image, available_enemy_ships):
-        is_break = True
-        while is_break:
-            [y, x] = self.choise_computer_shoot_coordinate(player_board_image, available_enemy_ships)[0]
-            last_possible_cell = self.choise_computer_shoot_coordinate(player_board_image, available_enemy_ships)[1]
-            if not player_board.board[x][y]:
-                player_board.board[x][y] = not player_board.board[x][y]
-                player_board_image.flood_enemy_deck(y, x, available_enemy_ships)
-                self.print_char_at_player_board(y, x, self.flooded_deck)
-                if player_board.check_win():
+    def take_computer_turn(self):
+        while True:
+            [y, x] = self.choise_computer_shoot_coordinate()
+            if not self.player_board.board[x][y]:
+                self.player_board.board[x][y] = not self.player_board.board[x][y]
+                self.check_unknown_ship()
+                self.unknown_ship.flood_deck(y, x)
+                self.print_char_at_player_board(y, x, self.flooded_deck_char)
+                if self.player_board.check_win():
                     return self.win_action(True)
+                continue
             else:
-                player_board_image.board[x][y] = 'ship_area'
-                if last_possible_cell:
-                    player_board_image.refresh_available_enemy_ships(last_possible_cell, available_enemy_ships)
+                self.player_board_image.board[x][y] = 'ship_area'
+                self.unknown_ship.update_ship_when_miss(y, x)
                 self.print_char_at_player_board(y, x, self.miss_char)
-            while True:
-                ch_input = self.stdscr.getch()
-                if ch_input == ord('q') or ch_input == ord('Q'):
-                    is_break = False
-                    break
-                elif ch_input == ord(' '):
-                    break
-
+                break
 
 
 def computer_ship_place_test():
@@ -272,17 +269,18 @@ def computer_turn_test():
     importlib.reload(board_image)
     player_board = board_image.BoardImage()
     player_board_image = board_image.BoardImage()
-    available_enemy_ships = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4]
+    unknown_ships = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4]
     stdscr = curses.initscr()
     curses.noecho()
     curses.cbreak()
+    curses.curs_set(0)
     stdscr.keypad(True)
-    game = Game(stdscr, ".\screen_layout.txt")
+    game = Game(stdscr, ".\screen_layout.txt", unknown_ships, player_board_image)
     game.print_screen_layout()
-    for decks_number in available_enemy_ships:
+    for decks_number in unknown_ships:
         game.random_place_ship(player_board, decks_number)
-    game.take_computer_turn(player_board, player_board_image, available_enemy_ships)
-    print(available_enemy_ships)
+    game.take_computer_turn(player_board)
+    print(unknown_ships)
     for i in range(10):
         print('\n')
         for j in range(10):
