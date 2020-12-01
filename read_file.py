@@ -16,7 +16,6 @@ class ReadFile:
                     content.append(row)
                 else:
                     raise ValueError(f"File {self.file_name} content is not text.")
-        file.close()
         return content
 
 
