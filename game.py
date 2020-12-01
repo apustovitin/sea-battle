@@ -223,7 +223,6 @@ class Game(Screen):
 
 
 def computer_ship_place_test():
-    importlib.reload(board_image)
     computer_own_board = board_image.BoardImage()
     stdscr = curses.initscr()
     curses.noecho()
@@ -241,7 +240,6 @@ def computer_ship_place_test():
 
 def player_ship_place_test():
     while True:
-        importlib.reload(board_image)
         player_own_board = board_image.BoardImage()
         stdscr = curses.initscr()
         curses.noecho()
@@ -264,7 +262,6 @@ def player_ship_place_test():
 
 
 def player_turn_test():
-    importlib.reload(board_image)
     computer_own_board = board_image.BoardImage()
     stdscr = curses.initscr()
     curses.noecho()
@@ -282,7 +279,6 @@ def player_turn_test():
 
 
 def computer_turn_test():
-    importlib.reload(board_image)
     player_board = board_image.BoardImage()
     player_board_image = board_image.BoardImage()
     unknown_ships = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4]
