@@ -76,13 +76,13 @@ class Screen:
 
     def print_winner(self, winner):
         message = winner + " IS WIN!"
-        self.stdscr.addstr(self.end_of_layout_y + 1, self.center_x - len(message) // 2, message)
+        self.stdscr.addstr(self.end_of_layout_y + 2, self.center_x - len(message) // 2, message)
         
-    def print_diagnostic_message(self, message):
-        self.stdscr.move(self.end_of_layout_y + 2, 0)
+    def print_message(self, message):
+        self.stdscr.move(self.end_of_layout_y + 1, 0)
         self.stdscr.clrtoeol()
         self.stdscr.refresh()
-        self.stdscr.addstr(self.end_of_layout_y + 2, self.center_x - len(message) // 2, message)
+        self.stdscr.addstr(self.end_of_layout_y + 1, self.center_x - len(message) // 2, message)
         self.stdscr.refresh()
 
 

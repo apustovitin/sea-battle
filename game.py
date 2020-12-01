@@ -1,21 +1,20 @@
-import importlib
 import curses
 import board_image
 from ship import Ship, UnknownShip
 from screen import Screen
-import time
 import random
 
 
 class Game(Screen):
-    def __init__(self, stdscr, file_name, unknown_ships, player_board, player_board_image):
+    def __init__(self, stdscr, file_name, unknown_ships, computer_board, player_board, player_board_image):
         super().__init__(stdscr, file_name)
         self.flooded_deck_char, self.aim_char, self.miss_char, self.deck_char = '□', '+', '*', '■'
         self.unknown_ships = unknown_ships
+        self.computer_board = computer_board
         self.player_board = player_board
         self.player_board_image = player_board_image
         self.unknown_ship = UnknownShip(unknown_ships, player_board_image)
-        # self.is_break, self.is_restart  = self.place_player_ship(decks_number, self.deck_char)
+        self.player_aim_coordinate_y, self.player_aim_coordinate_x = 0, 0
 
     def print_ship_background(self, ship_background):
         for [y, x, char] in ship_background:
@@ -38,7 +37,7 @@ class Game(Screen):
             self.stdscr.refresh()
         return ship_background
 
-    def place_player_ship(self, board_image, decks_number):
+    def place_player_ship(self, decks_number):
         curses.curs_set(0)
         y_pos = x_pos = 0
         is_gorizontal = True
@@ -74,14 +73,22 @@ class Game(Screen):
             elif ch_input == ord('r') or ch_input == ord('R'):
                 return False, True
             elif ch_input == ord(' '):
-                if board_image.are_free_board_cells(ship):
-                    board_image.add_ship_image(ship)
+                if self.player_board.are_free_board_cells(ship):
+                    self.player_board.add_ship_image(ship)
                     self.print_ship(ship, False)
                 else:
                     self.print_ship_background(ship_background)
                     y_pos = x_pos = 0
                     continue
                 return False, False
+
+    def place_player_ships(self):
+        self.print_message("Place your ships.")
+        for decks_number in self.unknown_ships:
+            is_break, is_restart = self.place_player_ship(decks_number)
+            if is_break or is_restart: 
+                return is_break, is_restart
+        return False, False
 
     def get_ship_possible_parameters(self, board_image, decks_number):
         possible_parameters = []
@@ -100,6 +107,10 @@ class Game(Screen):
         ship = Ship(decks_number, y, x, is_gorizontal)
         board_image.add_ship_image(ship)
 
+    def place_computer_ships(self):
+        for decks_number in self.unknown_ships:
+            self.random_place_ship(self.computer_board, decks_number)
+
     def print_aim_background(self, aim_background):
         self.stdscr.addch(*aim_background)
         self.stdscr.refresh()
@@ -115,9 +126,9 @@ class Game(Screen):
         x = self.computer_board_start_x + x_pos * self.step_x
         return [y, x, chr(self.stdscr.inch(y, x))]
 
-    def take_player_turn(self, computer_board):
-        curses.curs_set(0)
-        y_pos = x_pos = 0
+    def player_move(self):
+        self.print_message("Player move now.")
+        y_pos, x_pos = self.player_aim_coordinate_y, self.player_aim_coordinate_x
         while True:
             aim_background = self.get_aim_background_from_computer_board(y_pos, x_pos)
             self.print_char_at_computer_board(y_pos, x_pos, self.aim_char)
@@ -139,18 +150,20 @@ class Game(Screen):
             elif ch_input == ord('r') or ch_input == ord('R'):
                 return False, True
             elif ch_input == ord(' '):
-                if not computer_board.board[x_pos][y_pos]:
-                    computer_board.board[x_pos][y_pos] = not computer_board.board[x_pos][y_pos]
+                self.player_aim_coordinate_y, self.player_aim_coordinate_x = y_pos, x_pos
+                if not self.computer_board.board[x_pos][y_pos]:
+                    self.computer_board.board[x_pos][y_pos] = not self.computer_board.board[x_pos][y_pos]
                     self.print_char_at_computer_board(y_pos, x_pos, self.flooded_deck_char)
-                    if computer_board.check_win():
-                        return self.win_action(False)
+                    if self.computer_board.check_win():
+                        is_break, is_restart = self.win_action(False)
+                        return is_break, is_restart
                     continue
                 else:
                     self.print_char_at_computer_board(y_pos, x_pos, self.miss_char)
-                    continue
-                return False, False
+                    return False, False
 
     def win_action(self, computer_turn):
+        self.print_message(" ")
         winner = "COMPUTER" if computer_turn else "PLAYER"
         self.print_winner(winner)
         while True:
@@ -188,8 +201,10 @@ class Game(Screen):
             self.player_board_image = self.unknown_ship.image_board
             self.unknown_ship = UnknownShip(self.unknown_ships, self.player_board_image)
 
-    def take_computer_turn(self):
+    def computer_move(self):
+        self.print_message("Computer move now.")
         while True:
+            curses.napms(1000)
             [y, x] = self.choise_computer_shoot_coordinate()
             if not self.player_board.board[x][y]:
                 self.player_board.board[x][y] = not self.player_board.board[x][y]
@@ -197,13 +212,14 @@ class Game(Screen):
                 self.unknown_ship.flood_deck(y, x)
                 self.print_char_at_player_board(y, x, self.flooded_deck_char)
                 if self.player_board.check_win():
-                    return self.win_action(True)
+                    is_break, is_restart = self.win_action(True)
+                    return is_break, is_restart
                 continue
             else:
                 self.player_board_image.board[x][y] = 'ship_area'
                 self.unknown_ship.update_ship_when_miss(y, x)
                 self.print_char_at_player_board(y, x, self.miss_char)
-                break
+                return False, False
 
 
 def computer_ship_place_test():
